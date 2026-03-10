@@ -1,0 +1,63 @@
+-- =========================================================================
+-- EJERCICIO: Disparador para auditar cambios de salario superiores al 5%
+-- =========================================================================
+
+-- 1. Primero creamos la tabla de auditoría tal y como pide el enunciado.
+-- (Si ya existe de antes, puedes omitir este paso o hacer un DROP previo)
+DROP TABLE auditaremple CASCADE CONSTRAINTS;
+
+CREATE TABLE auditaremple (
+    col1 VARCHAR2(200)
+);
+
+-- 2. Creamos el disparador (Trigger)
+CREATE OR REPLACE TRIGGER trg_auditar_salario
+BEFORE UPDATE ON emple
+FOR EACH ROW
+BEGIN
+  -- Comprobamos si el cambio (sea subida o bajada) supera el 5% del salario antiguo.
+  -- Usamos ABS() para obtener el valor absoluto de la diferencia y que nos sirva en ambos casos.
+  IF (ABS(:new.salario - :old.salario) > (:old.salario * 0.05)) THEN
+     
+     -- Insertamos en col1 la cadena formateada concatenando los datos con ||
+     INSERT INTO auditaremple (col1) 
+     VALUES ('Fecha y Hora: ' || TO_CHAR(SYSDATE, 'DD/MM/YYYY HH24:MI') || 
+             ' | Empleado: ' || :old.emp_no || ' (' || :old.apellido || ')' ||
+             ' | Salario Ant: ' || :old.salario || 
+             ' | Salario Nuevo: ' || :new.salario);
+             
+  END IF;
+END;
+/
+
+-- =========================================================================
+-- BLOQUE DE PRUEBAS (Al estilo de los apuntes del profesor)
+-- =========================================================================
+
+SET SERVEROUTPUT ON;
+
+-- Prueba 1: Subida de sueldo menor al 5% (No debería saltar el trigger ni insertar nada)
+-- Empleado 7369 (SANCHEZ) cobra 1040. El 5% es 52. Le subimos 20.
+UPDATE EMPLE SET SALARIO = SALARIO + 20 WHERE EMP_NO = 7369;
+
+-- Prueba 2: Subida de sueldo mayor al 5% (Sí debería registrarse)
+-- Empleado 7499 (ARROYO) cobra 1500. El 5% es 75. Le subimos 200.
+UPDATE EMPLE SET SALARIO = SALARIO + 200 WHERE EMP_NO = 7499;
+
+-- Prueba 3: Bajada de sueldo mayor al 5% (Sí debería registrarse)
+-- Empleado 7521 (SALA) cobra 1625. El 5% es 81.25. Le bajamos 500.
+UPDATE EMPLE SET SALARIO = SALARIO - 500 WHERE EMP_NO = 7521;
+
+-- Confirmamos los cambios para que se guarden (recuerda la teoría de RESTRICCIONES EN TRIGGERS: 
+-- el COMMIT no se pone dentro del trigger, lo hace el usuario después)
+COMMIT;
+
+-- Comprobamos el resultado en la tabla de auditoría
+SELECT * FROM auditaremple;
+
+/* Salida esperada al hacer el SELECT:
+COL1
+----------------------------------------------------------------------------------------------------
+Fecha y Hora: 10/03/2026 11:43 | Empleado: 7499 (ARROYO) | Salario Ant: 1500 | Salario Nuevo: 1700
+Fecha y Hora: 10/03/2026 11:43 | Empleado: 7521 (SALA) | Salario Ant: 1625 | Salario Nuevo: 1125
+*/
