@@ -1,0 +1,19 @@
+Configuración de la sesión
+------------------------------------------
+PARA PODER CREAR USUARIOS
+SET SERVEROUTPUT ON
+ALTER SESSION SET "_ORACLE_SCRIPT" = TRUE;
+CREATE USER LOLO IDENTIFIED BY LOLOLAND;
+GRANT CONNECT TO LOLO;
+GRANT RESOURCE TO LOLO;
+GRANT DBA TO LOLO;
+CONNECT LOLO/LOLOLAND;
+
+-------   ATENCIÓN !!!  PARA CREAR UNA INSTANCIA EN UN DOCKER
+
+NOTAS:  Hay que tener instalado el Docker Desktop
+
+https://github.com/SlavikBlxt4/oracle-installation/tree/main
+
+Desde aquí ejecutar RunAsAdmin.bat ---> Aunque lo detecte como virus NO LO ES, pedirá permisos de admin.
+Este mira que estés conectado e invoca los powershell 

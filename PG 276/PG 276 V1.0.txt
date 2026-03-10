@@ -1,0 +1,23 @@
+SET SERVEROUTPUT ON;
+
+DECLARE
+
+   CURSOR c1 IS 
+       SELECT APELLIDO FROM EMPLE
+ 	WHERE dept_no = 20;
+
+   v_apellido EMPLE.APELLIDO%TYPE;
+
+BEGIN
+   OPEN c1;
+   LOOP
+      FETCH c1 INTO v_apellido;
+      IF(c1%ROWCOUNT = 0) THEN
+          DBMS_OUTPUT.PUT_LINE('NO EXISTEN EMPLEADOS EN EL DPTO 20 !!!');        
+      END IF;
+      EXIT WHEN c1%NOTFOUND;      
+      DBMS_OUTPUT.PUT_LINE(TO_CHAR(c1%ROWCOUNT, '99.')||v_apellido);      
+   END LOOP;
+   CLOSE c1;
+END;
+/

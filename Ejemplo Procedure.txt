@@ -1,0 +1,65 @@
+DROP PROCEDURE BORRAR_DPTO
+SET SERVEROUTPUT ON
+
+CREATE PROCEDURE BORRAR_DPTO
+AS
+  v_dept99 NUMBER(2);
+  v_num_empleados NUMBER(2);
+
+BEGIN
+  SELECT COUNT(*) INTO v_dept99 FROM DEPART WHERE dept_no =99;  
+
+  IF (v_dept99 = 0)
+   THEN
+     INSERT INTO DEPART VALUES (99, 'TEMPORAL', 'TEMPORAL');
+  END IF;
+
+  UPDATE EMPLE SET dept_no = 99 WHERE dept_no = 10;
+  v_num_empleados := SQL%ROWCOUNT;
+  DBMS_OUTPUT.PUT_LINE(v_num_empleados || ' empleados ubicados en TEMPORAL  ');
+  DELETE FROM DEPART WHERE dept_no = 10;
+END;
+/
+
+-- SI HUBIERA ERRORES LOS MIRO CON "SHOW ERRORS" DESDE LÍNEA DE COMANDO
+
+-- AHORA HARÍA EL MAIN QUE UTILIZA EL PROCEDURE
+DECLARE
+BEGIN
+   BORRAR_DPTO();
+END;
+/
+
+-- TAMBIÉN SE PODRÍA EJECUTAR DE ESTE MODO PARA PRUEBAS
+EXECUTE BORRAR_DPTO()
+
+-- VERSION 2.0 -------------------------------------------------------
+--
+-- QUIERO QUE LE PASE UN PARÁMETRO CON EL NUM DE DPTO A 
+-- BORRAR, DEBERÉ CONTROLAR ERRORES, POR EJEMPLO QUE 
+-- EXISTA EL DPTO A BORRAR, ETC . . .
+DROP PROCEDURE BORRAR_DPTO
+
+CREATE PROCEDURE BORRAR_DPTO (p_dept_no NUMBER)
+AS
+  v_dept99 DEPART.DEPT_NO%TYPE;
+  v_num_empleados NUMBER(2);
+
+BEGIN
+  SELECT COUNT(*) INTO v_dept99 FROM DEPART WHERE dept_no =99;  
+
+  IF (v_dept99 = 0)
+   THEN
+     INSERT INTO DEPART VALUES (99, 'TEMPORAL', 'TEMPORAL');
+  END IF;
+
+  UPDATE EMPLE SET dept_no = 99 WHERE dept_no = 
+
+p_dept_no   ;
+  v_num_empleados := SQL%ROWCOUNT;
+  DBMS_OUTPUT.PUT_LINE(v_num_empleados || ' empleados ubicados en TEMPORAL  ');
+  DELETE FROM DEPART WHERE dept_no = 
+
+p_dept_no   ;
+END;
+/

@@ -1,0 +1,171 @@
+-- RESTRICCIONES
+
+-- NO PUEDE CONTENER:
+--  ** REALIZAR TRANSACCIONES
+--   * COMMIT
+--   * ROLLBACK
+--   * SAVEPOINT
+--  ** CREAR ELEMENTOS DE LA BD 
+--   * CREATE TABLE
+--   * CREATE VIEW . . .
+--  ** NO PUEDE MODIFICAR LAS TABLAS QUE ESTÁN CAMBIANDO (POR EJEMPLO LA QUE DISPARA EL TRIGGER)
+--   * SALVO LOS VALORES :OLD Y :NEW !!! (ES DECIR EN TRIGGERS "FOR EACH ROW")
+--  ** NO PUEDE MODIFICAR LAS PKS O FKS O UQs DE TABLAS REFERENCIADAS POR EL PROPIO TRIGGER
+
+
+CREATE OR REPLACE TRIGGER mod_emple BEFORE UPDATE ON emple FOR EACH ROW
+BEGIN
+  IF (:new.salario <:old.salario) THEN
+     INSERT INTO emple_auditado VALUES (:old.emp_no, :old.apellido, :old.salario, 
+                    :new.salario, SYSDATE);
+  END IF; 
+  COMMIT;
+END;
+/
+
+SQL> UPDATE EMPLE SET SALARIO = 500 WHERE DEPT_NO=10;
+UPDATE EMPLE SET SALARIO = 500 WHERE DEPT_NO=10
+       *
+ERROR en lÝnea 1:
+ORA-04092: no se puede COMMIT en un disparador
+ORA-06512: en "LOLO.MOD_EMPLE", lÝnea 5
+ORA-04088: error durante la ejecuci¾n del disparador 'LOLO.MOD_EMPLE'
+
+
+SQL> SELECT * FROM EMPLE_AUDITADO;
+
+ninguna fila seleccionada
+
+SQL> SELECT * FROM EMPLE
+  2  WHERE DEPT_NO = 10;
+
+    EMP_NO APELLIDO   OFICIO            DIR FECHA_ALT     SALARIO   COMISION
+---------- ---------- ---------- ---------- ---------- ---------- ----------
+   DEPT_NO
+----------
+      7782 CEREZO     DIRECTOR         7839 09/06/1991       2885
+        10
+
+      7839 REY        PRESIDENTE            17/11/1991       4100
+        10
+
+      7934 MUÑOZ      EMPLEADO         7782 23/01/1992       1690
+        10
+
+-- TAMPOCO HA BAJADO EL SUELDO A LOS EMPLEADOS PORQUE HA FALLADO LA TRANSACCION (EL TRIGGER)
+-- VAMOS A PROBAR SIN EL COMMIT A VER QUE SUCEDE . . .
+
+CREATE OR REPLACE TRIGGER mod_emple BEFORE UPDATE ON emple FOR EACH ROW
+BEGIN
+  IF (:new.salario <:old.salario) THEN
+     INSERT INTO emple_auditado VALUES (:old.emp_no, :old.apellido, :old.salario, 
+                    :new.salario, SYSDATE);
+  END IF; 
+  
+END;
+/
+
+SQL> UPDATE EMPLE SET SALARIO = 500 WHERE DEPT_NO=10;
+
+SQL> SELECT * FROM EMPLE_AUDITADO;
+
+    EMP_NO APELLIDO   SALARIO_VIEJO SALARIO_NUEVO FECHA
+---------- ---------- ------------- ------------- ----------
+      7782 CEREZO              2885           500 13/02/2025
+      7839 REY                 4100           500 13/02/2025
+      7934 MUÑOZ               1690           500 13/02/2025
+
+-- PERO QUE PASA SI HAGO ROLLBACK ???
+-- DESAPARECERÁN O NO ??? PORQUE NO HE PODIDO HACER EL COMMIT . . . 
+
+SQL> ROLLBACK;
+Rollback terminado.
+
+SQL> SELECT * FROM EMPLE_AUDITADO;
+
+ninguna fila seleccionada
+
+-- POR QUE SUCEDE ESTO ??? ME INTERESA O NO QUE SUCEDA ???
+-- PORQUE COMO EN EL TRIGGER NO PUEDO HACER EL COMMIT, AL HACER
+-- EL ROLLBACK DESHACEN CAMBIOS Y LO QUE EL TRIGGER HIZO . . . 
+-- ES DECIR, AL HACER EL ROLLBACK LOS SALARIOS VUELVEN A LO
+-- QUE VALÍAN ANTES DEL UPDATE, POR LO TANTO EL REGISTRO QUE
+-- HA HECHO EL TRIGGER NO TENDRÍA SENTIDO GUARDARLO !!!!!!!
+-- ASÍ QUE TODO ESTÁ CORRECTO !!!!!!
+
+SQL> SELECT * FROM EMPLE
+  2  WHERE DEPT_NO = 10;
+
+    EMP_NO APELLIDO   OFICIO            DIR FECHA_ALT     SALARIO   COMISION
+---------- ---------- ---------- ---------- ---------- ---------- ----------
+   DEPT_NO
+----------
+      7782 CEREZO     DIRECTOR         7839 09/06/1991       2885
+        10
+
+      7839 REY        PRESIDENTE            17/11/1991       4100
+        10
+
+      7934 MUÑOZ      EMPLEADO         7782 23/01/1992       1690
+        10
+
+-- ATENCIÓN !!! SPOILER !!! 
+-- SI EL USUARIO HICIERA UN COMMIT EN LUGAR DEL ROLLBACK, VALIDARÍA EL CAMBIO 
+-- DE SALARIOS Y POR TANTO TAMBIÉN LO QUE REALIZA EL TRIGGER !!!
+-- ES DECIR, LA RESPONSABILIDAD DE HACER UN COMMIT, O UN ROLLBACK NO ES NUESTRA !!!
+-- SINO DEL USUARIO. EJEMPLO:
+
+SQL> UPDATE EMPLE SET SALARIO = 500
+  2  WHERE DEPT_NO = 10;
+
+3 filas actualizadas.
+
+SQL> COMMIT;
+
+Confirmaci¾n terminada.
+
+SQL> SELECT * FROM EMPLE
+  2  WHERE DEPT_NO = 10;
+
+    EMP_NO APELLIDO   OFICIO            DIR FECHA_ALT     SALARIO   COMISION
+---------- ---------- ---------- ---------- ---------- ---------- ----------
+   DEPT_NO
+----------
+      7782 CEREZO     DIRECTOR         7839 09/06/1991        500
+        10
+
+      7839 REY        PRESIDENTE            17/11/1991        500
+        10
+
+      7934 MUÑOZ      EMPLEADO         7782 23/01/1992        500
+        10
+
+
+SQL> ROLLBACK;
+
+Rollback terminado.
+
+SQL> SELECT * FROM EMPLE
+  2  WHERE DEPT_NO = 10;
+
+    EMP_NO APELLIDO   OFICIO            DIR FECHA_ALT     SALARIO   COMISION
+---------- ---------- ---------- ---------- ---------- ---------- ----------
+   DEPT_NO
+----------
+      7782 CEREZO     DIRECTOR         7839 09/06/1991        500
+        10
+
+      7839 REY        PRESIDENTE            17/11/1991        500
+        10
+
+      7934 MUÑOZ      EMPLEADO         7782 23/01/1992        500
+        10
+
+
+SQL> SELECT * FROM EMPLE_AUDITADO;
+
+    EMP_NO APELLIDO   SALARIO_VIEJO SALARIO_NUEVO FECHA
+---------- ---------- ------------- ------------- ----------
+      7782 CEREZO              2885           500 13/02/2025
+      7839 REY                 4100           500 13/02/2025
+      7934 MUÑOZ               1690           500 13/02/2025

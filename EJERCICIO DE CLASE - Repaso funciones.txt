@@ -1,0 +1,17 @@
+EJERCICIO 1
+-----------------------
+
+Con el ejercicio 3 del apartado "EJEMPLO FUNCIONES & CONTROL DE EXCEPCIONES", crear los siguiente:
+
+1 - Añadir la opción de capturar los errores de tipo 1 ( No hay permisos del usuario sobre EMPLE) en la función. Que devuelva un código de error negativo pero distinto a "-1" para poder reconocer también el error desde el "programa principal" que invoca a la función.
+
+2 - Crear un usuario (a mano desde línea de comando) con la opción CREATE USER (recordad tema 9 del libro) con permisos de acceso a la BD pero sin permisos de acceso a la tabla EMPLE y probar a ejecutar con él la función
+
+NOTA:  Los códigos de error de ORACLE los tenemos disponibles aquí:
+https://docs.oracle.com/cd/A91202_01/901_doc/appdev.901/a89856/07_errs.htm
+
+
+EJERCICIO 2
+-----------------------
+Utilizando la tabla EMPLE, crear un procedimiento que reciba un número de empleado y una cadena correspondiente a un oficio nuevo para el empleado. El procedimiento deberá localizar al empleado para asegurarse de que existe, y una vez hecho esto deberá modificar su oficio y visualizar los cambios realizados por pantalla, indicando el oficio antiguo y el nuevo.
+Habrá que realizar un control completo control de posibles errores.

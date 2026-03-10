@@ -1,0 +1,47 @@
+Con el ejercicio del tema anterior de ver por departamento los empleados con menor salario a uno dado (Ejemplo %TYPE & Select into)
+
+CREA UN CURSOR para poder ver todos los empleados aunque sean más de uno !!!!
+
+
+--- SOLUCION !!!!
+DROP FUNCTION Ver_Emple_Por_Salario_Dept ;
+
+CREATE FUNCTION Ver_Emple_Por_Salario_Dept (p_Num_depto NUMBER, p_Salario_dpto NUMBER) RETURN NUMBER AS
+  CURSOR v_emple(p_Num_depto   NUMBER, p_Salario_dpto   NUMBER) IS
+    SELECT EMP_NO, APELLIDO FROM EMPLE WHERE DEPT_NO = 
+p_Num_depto   AND SALARIO > p_Salario_dpto  ;
+  v_num_emple EMPLE.EMP_NO%TYPE;
+  v_apellido EMPLE.APELLIDO%TYPE;
+BEGIN
+  OPEN v_emple( p_Num_depto  , p_Salario_dpto  );
+  LOOP
+       FETCH v_emple INTO v_num_emple, v_apellido;
+       EXIT WHEN v_emple%NOTFOUND;
+       DBMS_OUTPUT.PUT_LINE('El empleado '|| v_num_emple ||' :'|| v_apellido || ' tiene más del salario indicado');
+  END LOOP;
+  CLOSE v_emple;
+  RETURN (1);
+END;
+/
+
+
+DECLARE
+     v_res NUMBER(1);
+BEGIN
+     v_res := Ver_Emple_Por_Salario_Dept (10, 1000);
+     CASE 
+         WHEN v_res  = 1 THEN
+               DBMS_OUTPUT.PUT_LINE('TODO OK !!!!');
+         WHEN v_res  = -1 THEN
+               DBMS_OUTPUT.PUT_LINE('NO HAY RESULTADOS PARA ESOS PARÁMETROS !!!!');
+               DBMS_OUTPUT.PUT_LINE('VOY A PROBAR CON DEPTO 10 Y SALARIO 4000 !!!!');
+               v_res  := Ver_Emple_Por_Salario_Dept (10, 4000);
+         WHEN v_res  = -2 THEN
+              DBMS_OUTPUT.PUT_LINE('HAY MAS DE UN RESULTADO PARA ESOS PARÁMETROS !!!!');
+               DBMS_OUTPUT.PUT_LINE('VOY A PROBAR CON DEPTO 10 Y SALARIO 4000 !!!!');
+               v_res  := Ver_Emple_Por_Salario_Dept (10, 4000);
+         WHEN v_res  = -3 THEN
+               DBMS_OUTPUT.PUT_LINE('ERROR FATAL INDEFINIDO EN LA FUNCIÓN !!!!');
+      END CASE;
+END;
+/

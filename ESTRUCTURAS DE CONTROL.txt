@@ -1,0 +1,21 @@
+IF THEN ELSE / ELSIF
+ESTRUCTURAS DE CONTROL
+
+
+https://www.ibm.com/docs/es/db2/11.5?topic=plsql-if-statement
+
+CASE
+
+https://www.ibm.com/docs/es/db2/11.5?topic=plsql-searched-case-statement
+
+LOOP
+
+https://www.ibm.com/docs/es/db2/11.5?topic=plsql-loop-statement
+
+WHILE
+
+https://www.ibm.com/docs/es/db2/11.5?topic=plsql-while-statement
+
+FOR
+
+https://www.ibm.com/docs/es/db2/11.5.x?topic=plsql-integer-variant-statement

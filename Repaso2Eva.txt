@@ -1,0 +1,57 @@
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE PROCEDURE ver_precio(v_num_producto NUMBER)
+AS
+ v_precio NUMBER;
+BEGIN
+ SELECT precio INTO v_precio
+  FROM PRODUCTOS
+  WHERE cod_producto = v_num_producto;
+ DBMS_OUTPUT.PUT_LINE('Precio = ' || v_precio);
+END;
+/
+
+EXECUTE ver_precio(12);
+
+---------------------------------------------------------------------
+
+CREATE OR REPLACE PROCEDURE modificar_precio_producto
+ (p_numproducto NUMBER, p_nuevoprecio NUMBER)
+AS
+ v_precioant NUMBER(5);
+BEGIN
+ SELECT precio INTO v_precioant
+  FROM PRODUCTOS
+  WHERE cod_producto = p_numproducto;
+ IF (v_precioant * 0.20) > (p_nuevoprecio - v_precioant) THEN
+  UPDATE PRODUCTOS SET precio = p_nuevoprecio
+   WHERE cod_producto = p_numproducto;
+ ELSE
+  DBMS_OUTPUT.PUT_LINE('Error, modificación supera 20%');
+ END IF;
+
+EXCEPTION
+ WHEN NO_DATA_FOUND THEN
+  DBMS_OUTPUT.PUT_LINE('No encontrado producto ' || p_numproducto);
+END modificar_precio_producto;
+/
+
+EXECUTE modificar_precio_producto(12, 300);
+
+---------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION con_iva
+ (p_cantidad NUMBER, p_tipo NUMBER DEFAULT 16)
+ RETURN NUMBER
+AS
+ v_resultado NUMBER (10,2) DEFAULT 0;
+BEGIN
+ v_resultado := p_cantidad * (1 + (p_tipo / 100));
+ RETURN (v_resultado);
+END con_iva;
+/
+
+BEGIN DBMS_OUTPUT.PUT_LINE(con_iva(200)); END;
+/
+
+SELECT cod_producto, precio, con_iva(precio) FROM PRODUCTOS;
