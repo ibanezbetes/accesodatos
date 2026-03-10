@@ -1,0 +1,3 @@
+Contexto: Páginas 304/305 de un libro con ejercicios de PL/SQL más complejos (Cursores, Excepciones, Paquetes/Registros).
+
+Contenido: Ejercicios del 1 al 10. Destacan: mostrar nombres de empleados por departamento, mostrar los 5 empleados con mayor salario (cursores), subir sueldos por departamento controlando excepciones, simular liquidaciones de empleados con un formato específico (Dpto, Oficio, Salario, Trienios, Comisión, Total), y automatizar pedidos actualizando tablas anidadas y manejando errores.

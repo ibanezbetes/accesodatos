@@ -1,0 +1,3 @@
+Contexto: Ejercicio propuesto sobre disparadores (triggers) para auditoría.
+
+Texto: "Actividades propuestas. 1. Escribe un disparador que inserte en la tabla auditaremple(col1 (VARCHAR2(200)) cualquier cambio que supere el 5% del salario del empleado indicando la fecha y hora, el empleado, y el salario anterior y posterior."

@@ -1,0 +1,7 @@
+Contexto: Dibujo a mano explicando la arquitectura Cliente-Servidor.
+
+Contenido: Muestra a un "CLIENTE" que hace peticiones y recibe un RecordSet a través de una nube hacia la base de datos "ORCL" en el "SERVIDOR (BACK)". Abajo clasifica los BLOQUES PL/SQL:
+
+Anónimo: (sólo para pruebas)
+
+Con Nombre: FUNCION y PROCEDURE

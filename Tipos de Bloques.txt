@@ -1,0 +1,11 @@
+Contexto: Resumen visual de la sintaxis de los bloques PL/SQL.
+
+Contenido: Divide la pizarra en dos:
+
+ANÓNIMOS: DECLARE -> Variables, BEGIN -> Código, EXCEPTION -> Código para excepción, END;
+
+BLOQUES PL/SQL CON NOMBRE:
+
+PROCEDURE: CREATE PROCEDURE X ( ... ) AS ...
+
+FUNCTION: CREATE FUNCTION Y ( ... ) RETURN TYPE ...

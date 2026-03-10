@@ -1,0 +1,3 @@
+Contexto: Evidencia de la configuración del entorno de trabajo.
+
+Contenido: Captura de PowerShell levantando un contenedor Docker (oracle-xe) usando docker-compose. Muestra cómo se accede a la base de datos localmente usando SQL*Plus con el usuario sys as sysdba.

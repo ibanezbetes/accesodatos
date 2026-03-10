@@ -1,0 +1,3 @@
+Contexto: Lista de 12 ejercicios básicos de PL/SQL.
+
+Contenido: Pide crear procedimientos y funciones sencillas: sumar números, invertir cadenas, extraer el año de una fecha, calcular años completos entre dos fechas, calcular trienios, cambiar caracteres no alfabéticos por blancos, borrar empleados por número, modificar la localidad de un departamento y ver el estado (valid o invalid) de los procedimientos almacenados.

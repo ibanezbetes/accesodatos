@@ -1,0 +1,6 @@
+Contexto: Pasos para usar un CURSOR explícito.
+
+Contenido: 1. DECLARACIÓN -> CURSOR Nombre IS SELECT..
+2. APERTURA -> OPEN Nombre (Explica: "Carga el CURSOR con TODOS los datos y se coloca en la 1ª fila. Devuelve más de 1 fila...").
+3. BÚSQUEDA DE RESULTADOS -> Se hace mediante un Bucle.
+4. CIERRE.

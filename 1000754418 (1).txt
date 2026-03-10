@@ -1,0 +1,3 @@
+Contexto: Continuación de la imagen anterior. Solución para poder modificar vistas complejas usando un trigger de sustitución.
+
+Texto: "Para facilitar estas operaciones de manipulación crearemos el siguiente disparador de sustitución: CREATE OR REPLACE TRIGGER t_ges_emplead INSTEAD OF DELETE OR INSERT OR UPDATE ON emplead FOR EACH ROW ... (Muestra el código completo con las sentencias IF DELETING THEN... ELSIF INSERTING THEN... ELSIF UPDATING THEN...)."
