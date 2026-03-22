@@ -1,0 +1,248 @@
+-- =========================================================================
+-- ARCHIVO 1: NUEVAS TABLAS 
+-- =========================================================================
+DROP TABLE envio_ejemplar CASCADE CONSTRAINTS;
+DROP TABLE envio CASCADE CONSTRAINTS;
+
+-- Tabla de cabecera de los envíos
+CREATE TABLE envio (
+    id CHAR(6),
+    cod_socio CHAR(5) NOT NULL, 
+    estado VARCHAR2(20),
+    fecha_creacion DATE DEFAULT SYSDATE,
+    CONSTRAINT PK_envio PRIMARY KEY (id),
+    CONSTRAINT CK_estado CHECK (estado IN ('EN_PREPARACION', 'ENVIADO', 'ENTREGADO', 'DEVUELTO'))
+);
+
+-- Tabla detalle (relaciona el envío con los ejemplares concretos)
+CREATE TABLE envio_ejemplar (
+    id_envio CHAR(6),
+    id_edicion CHAR(6),
+    numero INTEGER,
+    CONSTRAINT PK_envio_ejemplar PRIMARY KEY (id_envio, id_edicion, numero),
+    CONSTRAINT FK_ee_envio FOREIGN KEY (id_envio) REFERENCES envio(id) ON DELETE CASCADE,
+    CONSTRAINT FK_ee_ejemplar FOREIGN KEY (id_edicion, numero) REFERENCES ejemplar(id_edicion, numero)
+);
+
+-- =========================================================================
+-- ARCHIVO 2: TRIGGER DE CONTROL DE EJEMPLARES
+-- =========================================================================
+CREATE OR REPLACE TRIGGER trg_control_envio_ejemplar
+BEFORE INSERT ON envio_ejemplar
+FOR EACH ROW
+DECLARE
+    -- Cursor explícito para comprobar los estados
+    CURSOR c_envios_activos IS
+        SELECT env.estado
+        FROM envio env
+        JOIN envio_ejemplar ej ON env.id = ej.id_envio
+        WHERE ej.id_edicion = :new.id_edicion 
+          AND ej.numero = :new.numero;
+          
+    v_estado envio.estado%TYPE;
+BEGIN
+    OPEN c_envios_activos;
+    FETCH c_envios_activos INTO v_estado;
+    
+    WHILE c_envios_activos%FOUND LOOP
+        IF v_estado IN ('EN_PREPARACION', 'ENVIADO', 'ENTREGADO') THEN
+            CLOSE c_envios_activos;
+            -- Excepción personalizada obligatoria 
+            RAISE_APPLICATION_ERROR(-20500, 'Error: El ejemplar ya se encuentra asignado a un envio activo.');
+        END IF;
+        
+        FETCH c_envios_activos INTO v_estado;
+    END LOOP;
+    
+    CLOSE c_envios_activos;
+END;
+/
+
+-- =========================================================================
+-- ARCHIVO 3: ACTUALIZACIÓN DE LA CABECERA DEL PAQUETE
+-- =========================================================================
+CREATE OR REPLACE PACKAGE BiblioTK AS
+
+  -- Operativa Requerida Anterior
+  FUNCTION alta_obra (p_titulo VARCHAR2, p_anyo INTEGER DEFAULT NULL) RETURN VARCHAR2;
+  FUNCTION borrado_obra (p_id VARCHAR2) RETURN INTEGER;
+  FUNCTION alta_autor (p_nombre VARCHAR2, p_apellidos VARCHAR2, p_nacimiento DATE DEFAULT NULL) RETURN VARCHAR2;
+  FUNCTION borrado_autor (p_id VARCHAR2) RETURN INTEGER;
+  FUNCTION vincular (p_id_autor VARCHAR2, p_id_obra VARCHAR2) RETURN INTEGER;
+  FUNCTION desvincular (p_id_autor VARCHAR2, p_id_obra VARCHAR2) RETURN INTEGER;
+  FUNCTION alta_edicion (p_id_obra VARCHAR2, p_isbn VARCHAR2, p_anyo INTEGER DEFAULT NULL) RETURN VARCHAR2;
+  FUNCTION borrado_edicion (p_id VARCHAR2) RETURN INTEGER;
+  FUNCTION alta_ejemplar (p_id_edicion VARCHAR2) RETURN INTEGER;
+  FUNCTION borrado_ejemplar (p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER;
+  FUNCTION baja_ejemplar (p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER;
+  
+  FUNCTION apertura_prestamo (p_socio CHAR, p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER;
+  FUNCTION cierre_prestamo (p_socio CHAR, p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER;
+
+  -- ==========================================
+  -- NUEVA OPERATIVA DEL EXAMEN (Envíos)
+  -- ==========================================
+  PROCEDURE preparar_envio (p_id_socio CHAR, p_id_edicion CHAR);
+  FUNCTION total_envios_activos_socio (p_id_socio CHAR) RETURN INTEGER;
+
+END BiblioTK;
+/
+
+-- =========================================================================
+-- ARCHIVO 4: ACTUALIZACIÓN DEL CUERPO DEL PAQUETE 
+-- =========================================================================
+CREATE OR REPLACE PACKAGE BODY BiblioTK AS
+
+  FUNCTION alta_obra (p_titulo VARCHAR2, p_anyo INTEGER DEFAULT NULL) RETURN VARCHAR2 IS v_id obra.id%TYPE; BEGIN v_id := dbms_random.string('X', 5); INSERT INTO obra (id, titulo, anyo) VALUES (v_id, p_titulo, p_anyo); RETURN v_id; EXCEPTION WHEN OTHERS THEN RETURN '-1'; END;
+  FUNCTION borrado_obra (p_id VARCHAR2) RETURN INTEGER IS BEGIN DELETE FROM obra WHERE id = p_id; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION alta_autor (p_nombre VARCHAR2, p_apellidos VARCHAR2, p_nacimiento DATE DEFAULT NULL) RETURN VARCHAR2 IS v_id autor.id%TYPE; BEGIN v_id := dbms_random.string('X', 4); INSERT INTO autor (id, nombre, apellidos, nacimiento) VALUES (v_id, p_nombre, p_apellidos, p_nacimiento); RETURN v_id; EXCEPTION WHEN OTHERS THEN RETURN '-1'; END;
+  FUNCTION borrado_autor (p_id VARCHAR2) RETURN INTEGER IS BEGIN DELETE FROM autor WHERE id = p_id; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION vincular (p_id_autor VARCHAR2, p_id_obra VARCHAR2) RETURN INTEGER IS BEGIN INSERT INTO autor_obra (id_autor, id_obra) VALUES (p_id_autor, p_id_obra); RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION desvincular (p_id_autor VARCHAR2, p_id_obra VARCHAR2) RETURN INTEGER IS BEGIN DELETE FROM autor_obra WHERE id_autor = p_id_autor AND id_obra = p_id_obra; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION alta_edicion (p_id_obra VARCHAR2, p_isbn VARCHAR2, p_anyo INTEGER DEFAULT NULL) RETURN VARCHAR2 IS v_id edicion.id%TYPE; BEGIN v_id := dbms_random.string('X', 6); INSERT INTO edicion (id, id_obra, isbn, anyo) VALUES (v_id, p_id_obra, p_isbn, p_anyo); RETURN v_id; EXCEPTION WHEN OTHERS THEN RETURN '-1'; END;
+  FUNCTION borrado_edicion (p_id VARCHAR2) RETURN INTEGER IS BEGIN DELETE FROM edicion WHERE id = p_id; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION alta_ejemplar (p_id_edicion VARCHAR2) RETURN INTEGER IS v_num INTEGER; v_count_edicion NUMBER; BEGIN SELECT NVL(MAX(numero), 0) + 1 INTO v_num FROM ejemplar WHERE id_edicion = p_id_edicion; INSERT INTO ejemplar (id_edicion, numero, alta, baja) VALUES (p_id_edicion, v_num, SYSDATE, NULL); RETURN v_num; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION borrado_ejemplar (p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER IS BEGIN DELETE FROM ejemplar WHERE id_edicion = p_id_edicion AND numero = p_numero; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION baja_ejemplar(p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER IS BEGIN UPDATE ejemplar SET baja = SYSDATE WHERE id_edicion = p_id_edicion AND numero = p_numero; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION apertura_prestamo (p_socio CHAR, p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER IS BEGIN INSERT INTO prestamo (cod_socio, id_edicion, numero, fecha_prestamo, fecha_devolucion) VALUES (p_socio, p_id_edicion, p_numero, SYSDATE, NULL); RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+  FUNCTION cierre_prestamo (p_socio CHAR, p_id_edicion VARCHAR2, p_numero INTEGER) RETURN INTEGER IS BEGIN UPDATE prestamo SET fecha_devolucion = SYSDATE WHERE cod_socio = p_socio AND id_edicion = p_id_edicion AND numero = p_numero AND fecha_devolucion IS NULL; RETURN 1; EXCEPTION WHEN OTHERS THEN RETURN -1; END;
+
+  -- ==========================================
+  -- 33. PREPARAR ENVIO (40%) - VERSION OPTIMIZADA Y SEGURA (SAVEPOINT)
+  -- ==========================================
+  PROCEDURE preparar_envio (p_id_socio CHAR, p_id_edicion CHAR) IS
+    -- Cursor con FOR UPDATE para concurrencia y filtro en el WHERE
+    CURSOR c_ejemplares IS 
+        SELECT numero
+        FROM ejemplar 
+        WHERE id_edicion = p_id_edicion
+          AND baja IS NULL 
+        ORDER BY alta ASC
+        FOR UPDATE; 
+        
+    v_ejemplar c_ejemplares%ROWTYPE;
+    v_id_nuevo_envio envio.id%TYPE;
+    v_asignado BOOLEAN := FALSE;
+  BEGIN
+    OPEN c_ejemplares;
+    FETCH c_ejemplares INTO v_ejemplar;
+    
+    WHILE c_ejemplares%FOUND AND v_asignado = FALSE LOOP
+        
+        -- Marcamos un SAVEPOINT para proteger la transacción global de la sesión
+        SAVEPOINT sp_asignacion;
+        
+        BEGIN
+            v_id_nuevo_envio := dbms_random.string('X', 6);
+            
+            INSERT INTO envio (id, cod_socio, estado) 
+            VALUES (v_id_nuevo_envio, p_id_socio, 'EN_PREPARACION');
+            
+            -- Si este INSERT falla porque salta el trigger, pasará al EXCEPTION
+            INSERT INTO envio_ejemplar (id_envio, id_edicion, numero) 
+            VALUES (v_id_nuevo_envio, p_id_edicion, v_ejemplar.numero);
+            
+            v_asignado := TRUE;
+            DBMS_OUTPUT.PUT_LINE('EXITO: Envio ' || v_id_nuevo_envio || ' preparado con el ejemplar Num. ' || v_ejemplar.numero);
+            
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Deshacemos SOLO los insert de este envío concreto sin romper la sesión
+                ROLLBACK TO sp_asignacion; 
+        END;
+        
+        FETCH c_ejemplares INTO v_ejemplar;
+    END LOOP;
+    CLOSE c_ejemplares;
+    
+    IF v_asignado = FALSE THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR: No quedan ejemplares disponibles de esta edicion para enviar.');
+    END IF;
+    
+  EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR FATAL INDEFINIDO EN PREPARAR_ENVIO: ' || SQLERRM);
+  END preparar_envio;
+
+  -- ==========================================
+  -- 34. TOTAL ENVIOS ACTIVOS SOCIO (40%)
+  -- ==========================================
+  FUNCTION total_envios_activos_socio (p_id_socio CHAR) RETURN INTEGER IS
+    CURSOR c_envios_socio IS
+        SELECT env.estado
+        FROM envio env
+        JOIN envio_ejemplar ej ON env.id = ej.id_envio
+        WHERE env.cod_socio = p_id_socio; 
+        
+    v_estado envio.estado%TYPE;
+    v_contador INTEGER := 0; 
+  BEGIN
+    OPEN c_envios_socio;
+    FETCH c_envios_socio INTO v_estado;
+    
+    WHILE c_envios_socio%FOUND LOOP
+        IF v_estado IN ('EN_PREPARACION', 'ENVIADO') THEN
+            v_contador := v_contador + 1;
+        END IF;
+        
+        FETCH c_envios_socio INTO v_estado;
+    END LOOP;
+    
+    CLOSE c_envios_socio;
+    
+    RETURN v_contador;
+  EXCEPTION
+    WHEN OTHERS THEN
+        RETURN -1; 
+  END total_envios_activos_socio;
+
+END BiblioTK;
+/
+
+-- =========================================================================
+-- ARCHIVO 5: BATERÍA DE PRUEBAS DEL EXAMEN 
+-- =========================================================================
+SET SERVEROUTPUT ON;
+
+DECLARE
+  v_id_obra VARCHAR2(5);
+  v_id_edicion VARCHAR2(6);
+  v_num_ej1 INTEGER;
+  v_num_ej2 INTEGER;
+  v_total INTEGER;
+  v_socio_test CHAR(5) := 'S0001'; 
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('==============================================');
+  DBMS_OUTPUT.PUT_LINE('        PRUEBA DE EXAMEN: ENVIOS A DOMICILIO  ');
+  DBMS_OUTPUT.PUT_LINE('==============================================');
+
+  -- Preparamos datos base
+  v_id_obra := BiblioTK.alta_obra('Harry Potter', 1997);
+  v_id_edicion := BiblioTK.alta_edicion(v_id_obra, '978-84-111', 1997);
+  v_num_ej1 := BiblioTK.alta_ejemplar(v_id_edicion);
+  v_num_ej2 := BiblioTK.alta_ejemplar(v_id_edicion);
+  
+  -- Insertamos al socio de prueba (Ignora error si ya existe)
+  BEGIN
+    INSERT INTO socio (cod_socio, nombre, apellidos) VALUES (v_socio_test, 'Estudiante', 'Pruebas');
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  -- Probamos Preparar Envio 
+  DBMS_OUTPUT.PUT_LINE('-> Intentando preparar envio para el Socio ' || v_socio_test || '...');
+  BiblioTK.preparar_envio(v_socio_test, v_id_edicion);
+
+  -- Probamos Preparar Envio de nuevo 
+  DBMS_OUTPUT.PUT_LINE('-> Intentando preparar SEGUNDO envio para el Socio ' || v_socio_test || '...');
+  BiblioTK.preparar_envio(v_socio_test, v_id_edicion);
+  
+  -- Probamos si quedan libres 
+  DBMS_OUTPUT.PUT_LINE('-> Intentando preparar TERCER envio (Deberia dar error)...');
+  BiblioTK.preparar_envio(v_socio_test, v_id_edicion);
+
+  -- Probamos la funcion de conteo con Cursor 
+  v_total := BiblioTK.total_envios_activos_socio(v_socio_test);
+  DBMS_OUTPUT.PUT_LINE('-> Total de envios pendientes para el socio ' || v_socio_test || ': ' || v_total || ' (Deberian ser 2)');
+  
+  COMMIT;
+END;
+/
