@@ -1,0 +1,28 @@
+instrucciones:
+(crear ususario llamado biblioteca y conectarse)
+
+	CREATE USER biblioteca IDENTIFIED BY biblioteca;
+	GRANT CONNECT, RESOURCE, DBA TO biblioteca;
+	CONNECT biblioteca/biblioteca
+
+
+
+ejecutamos los scripts:
+
+	@01_CREACION_TABLAS.SQL
+	@BIBLIOTK_ESQUEMA_PARTE2.SQL
+	@TRIGGERS_AUDITORIA.SQL
+	@BIBLIOTK_PACKAGE.SQL
+	@BIBLIOTK_BODY.SQL
+
+
+
+abrimos el archivo "05_BATERIA_PRUEBAS.SQL" y cambiamos que en lugar de intentar borrar la obra principal (que está bloqueada por el Ejemplar 1), cree una obra rapida y la borre.. para ver que el trigger funciona
+
+y ejecutamos:
+
+	@05_BATERIA_PRUEBAS.SQL
+
+comprobamos que la obra sigue ahí con:
+
+	SELECT * FROM audit_borrado_obra;
